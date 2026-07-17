@@ -1,0 +1,41 @@
+# ── Environnements Python / Conda ────────────────────────────────────────────
+labelme_env/
+miniconda/
+venv/
+.venv/
+__pycache__/
+*.py[cdo]
+*.pyo
+
+# ── Modèles IA (trop lourds pour GitHub) ─────────────────────────────────────
+yolo11/models/
+*.pt
+*.onnx
+*.pth
+*.weights
+
+# ── Données de test (images, annotations) ────────────────────────────────────
+datas_test/
+
+# ── Réglages UI générés à l'exécution ────────────────────────────────────────
+yolo11/ui_settings.json
+
+# ── Build / dist LabelMe original ────────────────────────────────────────────
+/build/
+/dist/
+/*.egg-info/
+/.cache/
+/.pytest_cache/
+
+# ── Fichiers inutiles ─────────────────────────────────────────────────────────
+tree.txt
+requirements_freeze.txt
+uv.lock
+miniconda_installer.exe
+miniconda_installer.sh
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+*.swp

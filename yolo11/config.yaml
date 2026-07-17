@@ -1,0 +1,68 @@
+# Configuration du pipeline YOLO11
+# Modifie ce fichier pour changer les classes, tâches, fps, et modèle.
+
+tasks:
+  # Choix possibles : boxes, segmentation, skeletons
+  - boxes
+  - skeletons
+
+classes:
+  # Si vide → on garde toutes les classes détectées par le modèle
+  # Sinon, n'affiche/stocke que ces classes (strings)
+  - person
+  - bicycle
+
+# --- MODE POSE ---
+# yolo   : 17pts COCO (yolo11n-pose.pt) — rapide, body only, pas de Neck
+# dwpose : DWPose ONNX (dw-ll_ucoco_384.onnx) — body + feet/face/hands optionnels
+pose_backend: yolo
+
+# --- FORMAT SKELETON (uniquement si pose_backend = dwpose) ---
+# openpose_fullbody : 134pts — body 18pts OpenPose (avec Neck), feet, face, hands
+#                    → coco_specs/openpose_fullbody_skeleton.json
+# coco_fullbody     : 133pts — body 17pts COCO natif (sans Neck), feet, face, hands
+#                    → coco_specs/coco_fullbody_skeleton.json
+# human             : 17pts — COCO body only (yolo uniquement)
+#                    → coco_specs/human_skeleton.json
+skeleton_name: openpose_fullbody
+
+# --- GROUPES DWPOSE (ignoré si pose_backend = yolo) ---
+# Offsets format openpose_fullbody (134pts) :
+#   body       : 0-17   (18pts, OpenPose avec Neck)
+#   feet       : 18-23  (6pts  — 3 par pied : bigtoe, smalltoe, heel)
+#   face       : 24-91  (68pts — contour, sourcils, nez, yeux, bouche)
+#   left_hand  : 92-112 (21pts — poignet + 5 doigts × 4)
+#   right_hand : 113-133 (21pts)
+#
+# Offsets format coco_fullbody (133pts) :
+#   body       : 0-16   (17pts, COCO sans Neck)
+#   feet       : 17-22  (6pts)
+#   face       : 23-90  (68pts)
+#   left_hand  : 91-111 (21pts)
+#   right_hand : 112-132 (21pts)
+dwpose_groups:
+  body:  true
+  feet:  false
+  face:  false
+  hands: false
+
+# --- FILTRAGE KEYPOINTS / BOXES ---
+min_conf: 0.3   # seuil de confiance minimal pour garder un keypoint (0.0-1.0)
+nms_iou:  0.5   # seuil IoU NMS pour dédupliquer les boxes person avant DWPose
+                # (mettre null pour désactiver)
+
+video:
+  target_fps: 12          # fps cible pour le sampling (null = garder l'original)
+  draw_annotations: true  # si false, n'enregistre pas la vidéo annotée
+  show_live: true         # affiche la fenêtre OpenCV durant l'inférence vidéo
+  window_name: "YOLO11 Preview"
+
+model:
+  path: "yolo11_pretrained.pt"
+  fallback: "yolov11n.pt"
+
+output:
+  processed_dirname: "processed"   # dossier créé à côté de la vidéo/image
+  save_json: true                   # toujours sauvegarder les annotations JSON LabelMe
+  save_openpose_png: false          # exporter PNG openpose-style pour ComfyUI/ControlNet
+  save_annotated_video: true        # sauvegarder la vidéo annotée

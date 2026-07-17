@@ -1,0 +1,28 @@
+# YOLO (défaut) — COCO 17pts, pas d'options à mémoriser
+python -m yolo11.main "video.mp4"
+
+# DWPose — openpose body only (défaut dwpose)
+python -m yolo11.main "video.mp4" --mode dwpose
+
+# DWPose — openpose avec groupes spécifiques
+python -m yolo11.main "video.mp4" --groups body,hands
+python -m yolo11.main "video.mp4" --groups body,face,hands
+python -m yolo11.main "video.mp4" --groups body,feet,face,hands
+
+# DWPose — format COCO 133pts au lieu d'openpose
+python -m yolo11.main "video.mp4" --mode dwpose --skeleton coco
+
+# Réglages fins (combinables avec n'importe quoi)
+python -m yolo11.main "video.mp4" --fps 24
+python -m yolo11.main "video.mp4" --min-conf 0.4
+python -m yolo11.main "video.mp4" --nms-iou 0.6
+
+# Tâches
+python -m yolo11.main "video.mp4" --tasks boxes,skeletons
+python -m yolo11.main "video.mp4" --tasks boxes,segmentation,skeletons
+
+# Sauvegarder le résumé JSON
+python -m yolo11.main "video.mp4" --output result.json
+
+# Le roman complet
+python -m yolo11.main "video.mp4" --mode dwpose --skeleton coco --groups body,face --min-conf 0.4 --nms-iou 0.6 --fps 12 --tasks boxes,skeletons
