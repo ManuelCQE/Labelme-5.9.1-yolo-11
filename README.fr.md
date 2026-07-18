@@ -1,6 +1,6 @@
 # LabelMe 5.9.1-Yolo-DWPose
 
-[English](README.md) · [Interfaces d'intégration](INTERFACES_fr.md)
+[English](README.md) · [Interfaces d'intégration](INTERFACES.fr.md)
 
 LabelMe pour l'annotation de pose — détection auto (YOLO11 + DWPose), rotation en option pour les poses non-standard, correction manuelle, export ControlNet-ready.
 
