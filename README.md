@@ -1,8 +1,34 @@
 # LabelMe 5.9.1-Yolo-DWPose
 
-A standalone pose annotation tool combining [LabelMe](https://github.com/labelmeai/labelme) with [YOLO11](https://github.com/ultralytics/ultralytics) and [DWPose](https://github.com/IDEA-Research/DWPose) for generating OpenPose-compatible datasets — designed for ControlNet/ComfyUI workflows.
+[Français](README_fr.md) · [Integration interfaces](INTERFACES.md)
+
+LabelMe for pose annotation — automatic detection (YOLO11 + DWPose), optional rotation for non-standard poses, manual correction, ControlNet-ready export.
 
 ![Annotation example — standard pose](docs/images/annotation_standard.jpg)
+
+---
+
+## Use Cases
+
+- **ControlNet OpenPose datasets for ComfyUI** — generate image/skeleton pairs to train or fine-tune a ControlNet, with manual correction on poses missed by generic models
+- **Animation / retargeting pipelines** — extract the 2D skeleton to drive a 3D mannequin or avatar, alongside a ComfyUI + AnimateDiff workflow or other animation pipeline
+- **Sport / dance / martial arts** — annotate sequences with non-standard poses (falls, throws, technical movements) that generic pose models miss, to enrich specialized ControlNet datasets
+
+---
+
+## Official LabelMe vs this fork
+
+| Feature | LabelMe 5.9.1 (official) | LabelMe-Yolo-DWPose |
+|---|---|---|
+| Manual annotation (polygons, boxes, points) | ✅ | ✅ |
+| Automatic detection (YOLO11) | ❌ | ✅ Boxes, segmentation, 17-pt skeleton |
+| Full-body pose estimation (DWPose) | ❌ | ✅ 133/134 pts |
+| Handles inverted/tilted subjects | ❌ | ✅ Pre-inference rotation |
+| Targeted re-inference from a box | ❌ | ✅ |
+| Bulk keypoint add/remove | ❌ | ✅ Rubber-band, right-click |
+| Direct OpenPose export (PNG + JSON) | ❌ | ✅ Batch mode |
+| Native video processing | ❌ | ✅ Kalman tracking + mp4 preview |
+| Scriptable pipeline (mode, skeleton, rotation, fps…) | ❌ | ✅ |
 
 ---
 
@@ -15,9 +41,9 @@ A standalone pose annotation tool combining [LabelMe](https://github.com/labelme
 - **OpenPose PNG export** — black background rainbow skeleton + silhouette mask, batch mode available
 - **Re-inference from boxes** — redraw a box and re-run DWPose on a single image without re-running the full pipeline
 - **Manual keypoint correction** — several tools available:
-  - Right-click on a skeleton → **Add missing keypoint** — places a keypoint that was not detected (was at [0,0])
+  - Right-click on a skeleton → **Add missing keypoint** — activates a keypoint that wasn't detected (was at [0,0]) and places it at the skeleton's center; you then drag it into position (can be tricky to spot amid a dense cluster of hand/face points)
   - Right-click directly on a keypoint → **Remove** — sets it back to [0,0]
-  - **Ctrl+Alt+drag** (rubber-band selection) — select a group of keypoints and delete them in one action (e.g. remove all unreliable face or hand points at once)
+  - **Ctrl+Alt+drag** (rubber-band selection) — clears every keypoint inside the selected area, regardless of group. Built to avoid deleting points one by one on dense groups (hands: 21 pts, face: ~70 pts); for feet (3 pts), correcting individually is fine
 - **Presets** — save and restore your favourite inference settings
 
 ---
@@ -34,6 +60,9 @@ A standalone pose annotation tool combining [LabelMe](https://github.com/labelme
 ![Standard pose](docs/images/annotation_standard.jpg)
 
 ### Inverted pose — 180° rotation (Pooja Shah / Unsplash)
+
+The model expects an upright subject — head up, feet down. Pre-inference rotation temporarily presents the subject that way so DWPose can detect it correctly, then the pipeline maps the result back to the original image. The screenshots below show the raw output, with no manual correction applied.
+
 ![Inverted pose 180°](docs/images/annotation_180_yoga.jpg)
 
 ### Tilted pose — 90°L rotation (Devin Santiago / Unsplash)
@@ -59,7 +88,7 @@ The dancer's body leans heavily to the right. DWPose, trained on upright subject
 | Windows / Linux | NVIDIA GPU (recommended) | Auto-detected during install |
 | Windows / Linux | No GPU | CPU fallback — inference will be slow |
 
-> Driver requirements: CUDA 11.8 (driver ≥ 452), CUDA 12.1 (driver ≥ 526), CUDA 12.6 (driver ≥ 536).  
+> Driver requirements: CUDA 11.8 (driver ≥ 452), CUDA 12.1 (driver ≥ 526), CUDA 12.6 (driver ≥ 536).
 > The installer detects your driver automatically and installs the correct PyTorch version.
 
 ---
@@ -170,7 +199,9 @@ python -m yolo11.main video.mp4 --mode dwpose --groups body,hands --rotation 180
 | `--rotation` | Pre-inference rotation: `0`, `90`, `180`, `270` |
 | `--output` | Save a JSON summary to this file (optional) |
 
-`Edit → YOLO11 — Dossier` or `Edit → YOLO11 — Fichier`
+### 1. Run the pipeline on a folder or image
+
+`Edit → YOLO11 — Fichier` or `Edit → YOLO11 — Dossier`
 
 This generates annotated images and JSON files in a `processed/` subfolder.
 
@@ -188,7 +219,7 @@ This generates annotated images and JSON files in a `processed/` subfolder.
 
 ### 4. Export OpenPose PNG
 
-`Edit → Exporter PNG OpenPose…` — single image  
+`Edit → Exporter PNG OpenPose…` — single image
 `Edit → Exporter dataset OpenPose — dossier…` — batch mode
 
 Generates a `PNG-{stem}.png` (black background, rainbow skeleton + silhouette) and a matching `PNG-{stem}.json` for each image.
@@ -216,8 +247,17 @@ Open `Edit → Réglages YOLO11…` to configure:
 - **Extreme poses** (handstands, deep backbends, crossed limbs) — DWPose may misplace keypoints; compensate with rotation + re-inference to improve results (e.g. subject leaning right → rotate 90°L to present them upright to the model)
 - **Isolated body parts** (legs/feet only, hands only) — DWPose requires a full-body crop; partial crops yield poor results. Place keypoints manually via right-click.
 - **Face keypoints** — unreliable on small faces, profile views, or low resolution crops
-- **GTX 1060 / Pascal** — supported on Linux (CUDA 12.6); Windows not tested on Pascal architecture
-- **Multi-person tracking** — swap IDs may occur below ~20 FPS; best-effort only
+- **GTX 1060 / Pascal** — tested and working on Windows (author's setup); not tested on Linux yet. Newer GPUs (RTX, etc.) should work but may need CUDA config adjustments for their architecture
+- **Multi-person tracking** — ID swaps theoretically possible below ~20 FPS of the source video (threshold untested empirically); best-effort only
+- **No dedicated CLI launcher** — unlike `launch.bat`/`launch.sh` for the GUI, the YOLO pipeline (deliberately detachable from LabelMe so it can be driven standalone via CLI) requires manually activating the conda environment before each use
+
+---
+
+## Recommended Workflow
+
+The intended workflow is: **YOLO pipeline first → processed folder → LabelMe for correction**.
+
+Opening an image directly in LabelMe without going through the pipeline works for drawing boxes and re-inferring, but LabelMe may prompt for a save path if it's the first annotation.
 
 ---
 

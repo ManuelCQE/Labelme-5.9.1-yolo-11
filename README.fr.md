@@ -1,8 +1,34 @@
 # LabelMe 5.9.1-Yolo-DWPose
 
-Outil d'annotation de poses standalone combinant [LabelMe](https://github.com/labelmeai/labelme), [YOLO11](https://github.com/ultralytics/ultralytics) et [DWPose](https://github.com/IDEA-Research/DWPose) pour générer des datasets compatibles OpenPose — conçu pour les workflows ControlNet/ComfyUI.
+[English](README.md) · [Interfaces d'intégration](INTERFACES_fr.md)
+
+LabelMe pour l'annotation de pose — détection auto (YOLO11 + DWPose), rotation en option pour les poses non-standard, correction manuelle, export ControlNet-ready.
 
 ![Exemple d'annotation — pose standard](docs/images/annotation_standard.jpg)
+
+---
+
+## Cas d'usage
+
+- **Datasets ControlNet OpenPose pour ComfyUI** — génère des paires image/skeleton pour entraîner ou fine-tuner un ControlNet, avec correction manuelle sur les poses ratées par les modèles génériques
+- **Pipelines d'animation / retargeting** — extrait le squelette 2D pour driver un mannequin 3D ou un avatar, en complément d'un workflow ComfyUI + AnimateDiff ou autre pipeline d'animation
+- **Sport / danse / arts martiaux** — annote des séquences avec des poses non-standard (chutes, figures, mouvements techniques) que les modèles génériques de pose ratent, pour enrichir des datasets ControlNet spécialisés
+
+---
+
+## LabelMe officiel vs ce fork
+
+| Fonctionnalité | LabelMe 5.9.1 (officiel) | LabelMe-Yolo-DWPose |
+|---|---|---|
+| Annotation manuelle (polygones, boxes, points) | ✅ | ✅ |
+| Détection automatique (YOLO11) | ❌ | ✅ Boxes, segmentation, skeleton 17pts |
+| Estimation de pose corps entier (DWPose) | ❌ | ✅ 133/134 pts |
+| Gestion des sujets inversés/inclinés | ❌ | ✅ Rotation avant inférence |
+| Ré-inférence ciblée depuis une box | ❌ | ✅ |
+| Ajout/suppression de keypoints en masse | ❌ | ✅ Rubber-band, clic droit |
+| Export direct OpenPose (PNG + JSON) | ❌ | ✅ Batch disponible |
+| Traitement vidéo natif | ❌ | ✅ Tracking Kalman + preview mp4 |
+| Pipeline scriptable (mode, skeleton, rotation, fps…) | ❌ | ✅ |
 
 ---
 
@@ -15,9 +41,9 @@ Outil d'annotation de poses standalone combinant [LabelMe](https://github.com/la
 - **Export PNG OpenPose** — fond noir, skeleton arc-en-ciel + silhouette, mode batch disponible
 - **Réinférence depuis les boxes** — redessinez une box et relancez DWPose sur une image sans repasser par tout le pipeline
 - **Correction manuelle des keypoints** — plusieurs outils disponibles :
-  - Clic droit sur un skeleton → **Ajouter un keypoint manquant** — place un point non détecté (était à [0,0])
+  - Clic droit sur un skeleton → **Ajouter un keypoint manquant** — active un point non détecté (était à [0,0]) et le place au centre du skeleton ; à vous de le faire glisser à la bonne position (repérage parfois délicat au milieu d'un cluster de points main/visage)
   - Clic droit directement sur un keypoint → **Supprimer** — le remet à [0,0]
-  - **Ctrl+Alt+drag** (sélection rubber-band) — sélectionne un groupe de keypoints et les supprime en une action (ex : supprimer tous les points face/mains foireux d'un coup)
+  - **Ctrl+Alt+drag** (sélection rubber-band) — efface tous les keypoints dans la zone sélectionnée, peu importe le groupe. Pensé pour éviter de supprimer un par un sur les groupes à beaucoup de points (mains 21 pts, visage ~70 pts) ; sur les pieds (3 pts), la correction point par point reste suffisante
 - **Presets** — sauvegardez et restaurez vos réglages d'inférence favoris
 
 ---
@@ -34,6 +60,9 @@ Outil d'annotation de poses standalone combinant [LabelMe](https://github.com/la
 ![Pose standard](docs/images/annotation_standard.jpg)
 
 ### Pose inversée — rotation 180° (Pooja Shah / Unsplash)
+
+Le modèle s'attend à une tête en haut, des pieds en bas. La rotation avant inférence présente temporairement le sujet dans cette orientation pour que DWPose s'y retrouve, puis le pipeline retourne les coordonnées vers l'image d'origine. Les captures ci-dessous montrent le résultat brut, sans correction manuelle.
+
 ![Pose inversée 180°](docs/images/annotation_180_yoga.jpg)
 
 ### Pose inclinée — rotation 90°L (Devin Santiago / Unsplash)
@@ -59,7 +88,7 @@ Le corps de la danseuse penche fortement vers la droite. DWPose, entraîné sur 
 | Windows / Linux | GPU NVIDIA (recommandé) | Détecté automatiquement à l'installation |
 | Windows / Linux | Sans GPU | Fallback CPU — l'inférence sera lente |
 
-> Versions CUDA supportées : CUDA 11.8 (driver ≥ 452), CUDA 12.1 (driver ≥ 526), CUDA 12.6 (driver ≥ 536).  
+> Versions CUDA supportées : CUDA 11.8 (driver ≥ 452), CUDA 12.1 (driver ≥ 526), CUDA 12.6 (driver ≥ 536).
 > L'installeur détecte automatiquement votre driver et installe la bonne version de PyTorch.
 
 ---
@@ -190,7 +219,7 @@ Génère les images annotées et les fichiers JSON dans un sous-dossier `process
 
 ### 4. Exporter en PNG OpenPose
 
-`Edit → Exporter PNG OpenPose…` — image courante  
+`Edit → Exporter PNG OpenPose…` — image courante
 `Edit → Exporter dataset OpenPose — dossier…` — mode batch
 
 Génère un `PNG-{nom}.png` (fond noir, skeleton arc-en-ciel + silhouette) et un `PNG-{nom}.json` pour chaque image.
@@ -218,8 +247,9 @@ Ouvrez `Edit → Réglages YOLO11…` pour configurer :
 - **Poses extrêmes** (poiriers, grands écarts, membres croisés) — DWPose peut mal placer certains keypoints ; compensez avec une rotation + réinférence pour améliorer le résultat (ex : sujet penché à droite → rotation 90°L pour le présenter à l'endroit au modèle)
 - **Parties du corps isolées** (jambes seules, mains seules) — DWPose nécessite un crop corps entier ; les crops partiels donnent de mauvais résultats. Placez les keypoints manuellement via le clic droit.
 - **Keypoints du visage** — peu fiables sur les petits visages, profils ou crops basse résolution
-- **GTX 1060 / Pascal** — supporté sous Linux (CUDA 12.6) ; non testé sous Windows sur architecture Pascal
-- **Tracking multi-personnes** — échanges d'ID possibles en dessous de ~20 FPS ; best-effort uniquement
+- **GTX 1060 / Pascal** — testée et fonctionnelle sous Windows (config de l'auteur) ; non testée sous Linux à ce jour. Les GPU plus récents (RTX, etc.) devraient fonctionner mais peuvent nécessiter d'adapter la configuration CUDA à leur architecture
+- **Tracking multi-personnes** — échanges d'ID théoriquement possibles en dessous de ~20 FPS de la vidéo source (seuil non testé empiriquement) ; best-effort uniquement
+- **Pas de launcher dédié pour le CLI** — contrairement à `launch.bat`/`launch.sh` pour le GUI, le pipeline YOLO (volontairement détachable de LabelMe pour être piloté seul en ligne de commande) nécessite une activation manuelle de l'environnement conda avant chaque usage
 
 ---
 
