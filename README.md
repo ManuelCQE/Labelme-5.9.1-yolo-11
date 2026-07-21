@@ -1,4 +1,5 @@
 # LabelMe 5.9.1-Yolo-DWPose
+## ***LabelMe Project 5.9.1 designed for pose estimation (pipeline for YOLO11 box, segmentation, pose, and DWPose).***
 
 [Français](README.fr.md) · [Integration interfaces](INTERFACES.md)
 
